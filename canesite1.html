@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Cane Live Telemetry</title>
+    <!-- Modern Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { darkBg: '#0f172a', cardBg: '#1e293b', accent: '#38bdf8' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; }
+        #map { height: 400px; width: 100%; border-radius: 12px; z-index: 1; }
+        .status-safe { border-left-color: #4ade80; box-shadow: 0 0 15px rgba(74, 222, 128, 0.1); }
+        .status-danger { border-left-color: #f87171; box-shadow: 0 0 20px rgba(248, 113, 113, 0.3); }
+        .status-idle { border-left-color: #94a3b8; }
+        .card-transition { transition: all 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="p-6 md:p-10">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-accent to-blue-400">
+                <i class="fa-solid fa-satellite-dish mr-2 text-accent"></i>Smart Cane Telemetry
+            </h1>
+            <p class="text-slate-400 mt-2 text-sm" id="last-update">Waiting for ping...</p>
+        </header>
+
+        <!-- 3x2 Grid for standard monitors, 2x3 for tablets, 1x6 for mobile -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            
+            <!-- Card 1: Status -->
+            <div id="card-status" class="bg-cardBg p-5 rounded-xl border-l-4 border-accent card-transition flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">System Status</h3>
+                    <p id="system-status" class="text-2xl font-bold text-white">Connecting...</p>
+                </div>
+                <i id="icon-status" class="fa-solid fa-circle-notch fa-spin text-3xl text-slate-500"></i>
+            </div>
+
+            <!-- Card 2: Motion -->
+            <div class="bg-cardBg p-5 rounded-xl border-l-4 border-slate-600 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Motion Context</h3>
+                    <p id="motion-state" class="text-2xl font-bold text-white">--</p>
+                </div>
+                <i class="fa-solid fa-person-walking text-3xl text-slate-500"></i>
+            </div>
+
+            <!-- Card 3: Alarm Status -->
+            <div class="bg-cardBg p-5 rounded-xl border-l-4 border-slate-600 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Alarm Status</h3>
+                    <p id="mute-status" class="text-2xl font-bold text-white">--</p>
+                </div>
+                <i class="fa-solid fa-volume-high text-3xl text-slate-500"></i>
+            </div>
+
+            <!-- Card 4: Forward Sensor -->
+            <div class="bg-cardBg p-5 rounded-xl border-l-4 border-slate-600 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Forward Distance</h3>
+                    <p id="fwd-dist" class="text-2xl font-bold text-white">-- cm</p>
+                </div>
+                <i class="fa-solid fa-ruler-horizontal text-3xl text-slate-500"></i>
+            </div>
+
+            <!-- Card 5: Pit Sensor -->
+            <div class="bg-cardBg p-5 rounded-xl border-l-4 border-slate-600 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Pit/Drop Distance</h3>
+                    <p id="pit-dist" class="text-2xl font-bold text-white">-- cm</p>
+                </div>
+                <i class="fa-solid fa-arrow-down-up-across-line text-3xl text-slate-500"></i>
+            </div>
+
+            <!-- Card 6: Raw GPS -->
+            <div class="bg-cardBg p-5 rounded-xl border-l-4 border-slate-600 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Raw Coordinates</h3>
+                    <p id="raw-coords" class="text-lg font-bold text-white mt-1">Waiting for GPS...</p>
+                </div>
+                <i class="fa-solid fa-location-crosshairs text-3xl text-slate-500"></i>
+            </div>
+
+        </div>
+
+        <!-- Map Container -->
+        <div class="bg-cardBg p-2 rounded-xl shadow-lg border border-slate-700">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <!-- Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtMV5U-BF2z917cevasogD1LnoMXBGV4g",
+            authDomain: "zmartcain.firebaseapp.com",
+            databaseURL: "https://zmartcain-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "zmartcain",
+            storageBucket: "zmartcain.firebasestorage.app",
+            messagingSenderId: "542705074679",
+            appId: "1:542705074679:web:4dd48bbceb593e88006ef2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const map = L.map('map').setView([7.247, 80.592], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        let marker = L.marker([7.247, 80.592]).addTo(map).bindPopup('Waiting for lock...').openPopup();
+        let isFirstLocation = true;
+
+        const telemetryRef = ref(db, 'smartCane/');
+        onValue(telemetryRef, (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            document.getElementById('motion-state').innerText = data.motion || 'Idle';
+            document.getElementById('fwd-dist').innerText = (data.fwdDistance || 0) + ' cm';
+            document.getElementById('pit-dist').innerText = (data.pitDistance || 0) + ' cm';
+            document.getElementById('mute-status').innerText = data.alarmSilenced ? 'MUTED 🔕' : 'SOUND ON 🔊';
+            document.getElementById('last-update').innerText = 'Last Ping: ' + new Date().toLocaleTimeString();
+
+            const statusCard = document.getElementById('card-status');
+            const statusText = document.getElementById('system-status');
+            const statusIcon = document.getElementById('icon-status');
+            
+            // Dynamic UI styling based on states
+            if (data.isSleeping) {
+                statusText.innerText = 'SLEEP / IDLE';
+                statusCard.className = 'bg-cardBg p-5 rounded-xl border-l-4 border-slate-600 card-transition flex items-center justify-between';
+                statusIcon.className = 'fa-solid fa-moon text-3xl text-slate-500';
+            } else if (data.alarmSilenced) {
+                statusText.innerText = 'MUTED (Gesture)';
+                statusCard.className = 'bg-cardBg p-5 rounded-xl border-l-4 border-yellow-500 card-transition flex items-center justify-between';
+                statusIcon.className = 'fa-solid fa-bell-slash text-3xl text-yellow-500';
+            } else if (data.hazardActive) {
+                statusText.innerText = 'HAZARD ALERT!';
+                statusCard.className = 'bg-cardBg p-5 rounded-xl border-l-4 status-danger card-transition flex items-center justify-between';
+                statusText.classList.add('text-red-400');
+                statusIcon.className = 'fa-solid fa-triangle-exclamation text-3xl text-red-500';
+            } else {
+                statusText.innerText = 'ACTIVE / SAFE';
+                statusCard.className = 'bg-cardBg p-5 rounded-xl border-l-4 status-safe card-transition flex items-center justify-between';
+                statusText.classList.remove('text-red-400');
+                statusIcon.className = 'fa-solid fa-shield-check text-3xl text-green-400';
+            }
+
+            if (data.latitude && data.longitude) {
+                const newLatLng = [data.latitude, data.longitude];
+                document.getElementById('raw-coords').innerText = `${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`;
+                marker.setLatLng(newLatLng);
+                
+                if(isFirstLocation) {
+                    map.panTo(newLatLng);
+                    isFirstLocation = false;
+                }
+            }
+        });
+    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</body>
+</html>
