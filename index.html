@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart Cane V3 Dashboard</title>
   
-  <!-- Leaflet CSS for Map -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   
   <style>
@@ -21,160 +20,91 @@
       --border-color: #334155;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background-color: var(--bg-color);
       color: var(--text-main);
-      font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
       padding: 20px;
       line-height: 1.6;
     }
 
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
+    .container { max-width: 1200px; margin: 0 auto; }
 
     header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      display: flex; justify-content: space-between; align-items: center;
       border-bottom: 2px solid var(--border-color);
-      padding-bottom: 15px;
-      margin-bottom: 25px;
+      padding-bottom: 15px; margin-bottom: 25px;
     }
 
-    h1 {
-      font-size: 1.8rem;
-      font-weight: 600;
-      color: var(--text-main);
-    }
+    h1 { font-size: 1.8rem; font-weight: 600; }
     
     .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       background: var(--card-bg);
       padding: 8px 15px;
       border-radius: 20px;
-      font-size: 0.9rem;
-      color: var(--accent);
       border: 1px solid var(--border-color);
-      font-weight: bold;
     }
 
-    /* GRID LAYOUT */
+    /* Dropdown style */
+    select {
+      background-color: var(--bg-color);
+      color: var(--accent);
+      border: 1px solid var(--border-color);
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
     .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      margin-bottom: 25px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px; margin-bottom: 25px;
     }
 
     .card {
       background-color: var(--card-bg);
-      padding: 20px;
-      border-radius: 12px;
+      padding: 20px; border-radius: 12px;
       border: 1px solid var(--border-color);
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
       text-align: center;
       transition: transform 0.2s ease, background-color 0.3s ease;
     }
 
-    .card:hover {
-      transform: translateY(-5px);
-    }
+    .card:hover { transform: translateY(-5px); }
+    .card h3 { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; }
+    .value { font-size: 2.2rem; font-weight: 700; }
 
-    .card h3 {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 10px;
-    }
-
-    .value {
-      font-size: 2.2rem;
-      font-weight: 700;
-    }
-
-    /* SPECIFIC CARD STYLES */
     .danger-bg { background-color: rgba(239, 68, 68, 0.2) !important; border-color: var(--danger) !important; }
     .warning-bg { background-color: rgba(245, 158, 11, 0.2) !important; border-color: var(--warning) !important; }
     .success-bg { background-color: rgba(16, 185, 129, 0.2) !important; border-color: var(--success) !important; }
 
-    /* SOS PULSE ANIMATION */
     @keyframes pulse {
       0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
       70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
       100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
-    .sos-active {
-      background-color: var(--danger) !important;
-      color: white;
-      animation: pulse 1.5s infinite;
-    }
+    .sos-active { background-color: var(--danger) !important; color: white; animation: pulse 1.5s infinite; }
 
-    /* CHARTS & MAP SECTION */
-    .dashboard-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-bottom: 25px;
-    }
+    .dashboard-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
+    @media (max-width: 900px) { .dashboard-row { grid-template-columns: 1fr; } }
 
-    @media (max-width: 900px) {
-      .dashboard-row { grid-template-columns: 1fr; }
-    }
+    .panel { background-color: var(--card-bg); border-radius: 12px; border: 1px solid var(--border-color); padding: 20px; }
+    .panel-title { font-size: 1.1rem; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+    #map { height: 300px; border-radius: 8px; z-index: 1; }
+    .chart-container { position: relative; height: 300px; width: 100%; }
 
-    .panel {
-      background-color: var(--card-bg);
-      border-radius: 12px;
-      border: 1px solid var(--border-color);
-      padding: 20px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-    }
-
-    .panel-title {
-      font-size: 1.1rem;
-      margin-bottom: 15px;
-      color: var(--text-main);
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 10px;
-    }
-
-    #map {
-      height: 300px;
-      border-radius: 8px;
-      z-index: 1;
-    }
-
-    .chart-container {
-      position: relative;
-      height: 300px;
-      width: 100%;
-    }
-
-    /* TERMINAL LOGS */
     .log-container {
-      background-color: #000000;
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 15px;
-      height: 250px;
-      overflow-y: auto;
+      background-color: #000000; border: 1px solid var(--border-color);
+      border-radius: 12px; padding: 15px; height: 250px; overflow-y: auto;
       font-family: 'Fira Code', 'Courier New', Courier, monospace;
-      font-size: 0.85rem;
-      color: #32cd32; /* Hacker Green */
+      font-size: 0.85rem; color: #32cd32;
     }
-
-    .log-line {
-      margin-bottom: 6px;
-      border-bottom: 1px dashed #1a1a1a;
-      padding-bottom: 4px;
-    }
+    .log-line { margin-bottom: 6px; border-bottom: 1px dashed #1a1a1a; padding-bottom: 4px; }
     .log-timestamp { color: #888; margin-right: 10px; }
     .log-alert { color: var(--danger); font-weight: bold; }
   </style>
@@ -184,10 +114,17 @@
   <div class="container">
     <header>
       <h1>Smart Cane V3 Analytics</h1>
-      <div class="status-badge" id="dashboard-title">Loading Device...</div>
+      <div class="status-badge">
+        <label for="deviceSelect">Device:</label>
+        <select id="deviceSelect">
+          <option value="cane1">Cane 1</option>
+          <option value="cane2">Cane 2</option>
+          <option value="cane3">Cane 3</option>
+          <option value="cane4">Cane 4</option>
+        </select>
+      </div>
     </header>
     
-    <!-- TOP METRICS -->
     <div class="metrics-grid">
       <div class="card" id="stateCard">
         <h3>System State</h3>
@@ -215,39 +152,30 @@
       </div>
     </div>
 
-    <!-- MIDDLE ROW: CHARTS & MAP -->
     <div class="dashboard-row">
       <div class="panel">
         <h3 class="panel-title">Real-Time Distance Sensors</h3>
-        <div class="chart-container">
-          <canvas id="sensorChart"></canvas>
-        </div>
+        <div class="chart-container"><canvas id="sensorChart"></canvas></div>
       </div>
-
       <div class="panel">
         <h3 class="panel-title">Live GPS Tracking</h3>
         <div id="map"></div>
       </div>
     </div>
 
-    <!-- BOTTOM ROW: TERMINAL LOGS -->
     <div class="panel" style="padding: 0; overflow: hidden;">
       <h3 class="panel-title" style="margin: 15px 20px 5px 20px; border-bottom: none;">System Telemetry Log</h3>
-      <div class="log-container" id="liveLog">
-        <!-- Live logs appear here -->
-      </div>
+      <div class="log-container" id="liveLog"></div>
     </div>
   </div>
 
-  <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
+    import { getDatabase, ref, onValue, off } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-database.js";
 
-    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyCQNInbOHHqiKDd6zyR7e6vlKgRJpHndDU",
       authDomain: "smart-cane-bd6e8.firebaseapp.com",
@@ -262,20 +190,18 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Dynamic Cane ID
+    // Initial setup from URL
     const urlParams = new URLSearchParams(window.location.search);
-    const caneId = urlParams.get('id') || 'cane1'; 
-    document.getElementById('dashboard-title').innerText = `Tracking: ${caneId.toUpperCase()}`;
-
-    const caneRef = ref(db, `smartCane/${caneId}`);
+    let currentCaneId = urlParams.get('id') || 'cane1'; 
+    const deviceSelect = document.getElementById('deviceSelect');
+    deviceSelect.value = currentCaneId; // Set dropdown to match URL
 
     // --- MAP INITIALIZATION ---
     let map, marker;
     function initMap() {
       map = L.map('map').setView([7.247, 80.592], 15);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap &copy; CARTO'
+        maxZoom: 19, attribution: '&copy; OpenStreetMap'
       }).addTo(map);
       marker = L.marker([7.247, 80.592]).addTo(map).bindPopup('Waiting for GPS...').openPopup();
     }
@@ -283,136 +209,125 @@
 
     // --- CHART.JS INITIALIZATION ---
     const ctx = document.getElementById('sensorChart').getContext('2d');
-    const maxDataPoints = 20; // Number of history points on the graph
-    
-    const sensorChart = new Chart(ctx, {
+    const maxDataPoints = 20; 
+    let sensorChart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: [], // Timestamps
+        labels: [], 
         datasets: [
-          {
-            label: 'Forward (cm)',
-            borderColor: '#38bdf8',
-            backgroundColor: 'rgba(56, 189, 248, 0.1)',
-            data: [],
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 2
-          },
-          {
-            label: 'Pit (cm)',
-            borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-            data: [],
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 2
-          }
+          { label: 'Forward (cm)', borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', data: [], borderWidth: 2, fill: true, tension: 0.3, pointRadius: 2 },
+          { label: 'Pit (cm)', borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', data: [], borderWidth: 2, fill: true, tension: 0.3, pointRadius: 2 }
         ]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         scales: {
-          y: { 
-            beginAtZero: true, 
-            max: 200, // Adjust based on your max sensor range
-            grid: { color: '#334155' },
-            ticks: { color: '#94a3b8' }
-          },
-          x: {
-            grid: { display: false },
-            ticks: { color: '#94a3b8', maxTicksLimit: 6 }
-          }
+          y: { beginAtZero: true, max: 200, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+          x: { grid: { display: false }, ticks: { color: '#94a3b8', maxTicksLimit: 6 } }
         },
-        plugins: {
-          legend: { labels: { color: '#f8fafc' } }
-        },
-        animation: { duration: 0 } // Disable animation for smoother live data feel
+        plugins: { legend: { labels: { color: '#f8fafc' } } },
+        animation: { duration: 0 } 
       }
     });
 
-    // --- FIREBASE DATA LISTENER ---
-    onValue(caneRef, (snapshot) => {
-      const data = snapshot.val();
-      if(data) {
-        // Update Cards
-        document.getElementById('state').innerText = data.systemState || "ONLINE";
-        document.getElementById('fwd').innerText = data.fwdDistance ? data.fwdDistance + " cm" : "--";
-        document.getElementById('pit').innerText = data.pitDistance ? data.pitDistance + " cm" : "--";
-        document.getElementById('silenced').innerText = data.alarmSilenced ? "Muted" : "Active";
-        document.getElementById('sound').innerText = data.soundEnabled ? "Buzzer ON" : "Haptics Only";
-        
-        // Dynamic SOS Card
-        const sosCard = document.getElementById('sosCard');
-        if (data.sosTriggered) {
-          document.getElementById('sos').innerText = "EMERGENCY!";
-          sosCard.className = "card sos-active"; // Applies pulse animation
-        } else {
-          document.getElementById('sos').innerText = "Safe";
-          sosCard.className = "card";
-        }
-        
-        // Hazard Color Coding for Forward Card
-        const fwdCard = document.getElementById('fwdCard');
-        if (data.fwdDistance <= 35 && data.fwdDistance > 0) {
-          fwdCard.className = "card danger-bg";
-        } else if (data.fwdDistance <= 100 && data.fwdDistance > 0) {
-          fwdCard.className = "card warning-bg";
-        } else {
-          fwdCard.className = "card success-bg";
-        }
+    let currentListener = null;
+    let currentRef = null;
 
-        const now = new Date();
-        const timeStamp = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-
-        // Update Chart Data
-        if(data.fwdDistance !== undefined && data.pitDistance !== undefined) {
-          sensorChart.data.labels.push(timeStamp);
-          sensorChart.data.datasets[0].data.push(data.fwdDistance);
-          sensorChart.data.datasets[1].data.push(data.pitDistance);
-
-          // Keep chart array size limited
-          if (sensorChart.data.labels.length > maxDataPoints) {
-            sensorChart.data.labels.shift();
-            sensorChart.data.datasets[0].data.shift();
-            sensorChart.data.datasets[1].data.shift();
-          }
-          sensorChart.update();
-        }
-
-        // Live Log Terminal Update
-        const logBox = document.getElementById('liveLog');
-        const audioStateStr = data.soundEnabled ? "ON" : "MUTED";
-        const newLogEntry = document.createElement('div');
-        newLogEntry.className = "log-line";
-        
-        let logText = `<span class="log-timestamp">[${timeStamp}]</span> `;
-        logText += `State: ${data.systemState || 'OK'} | FWD: ${data.fwdDistance}cm | PIT: ${data.pitDistance}cm | Audio: ${audioStateStr} `;
-        
-        if (data.sosTriggered) {
-          logText += `<span class="log-alert"> | WARNING: SOS TRIGGERED!</span>`;
-        }
-
-        newLogEntry.innerHTML = logText;
-        logBox.prepend(newLogEntry); 
-
-        // Map Update
-        if (data.latitude && data.longitude) {
-          const lat = parseFloat(data.latitude);
-          const lng = parseFloat(data.longitude);
-          marker.setLatLng([lat, lng]);
-          map.panTo([lat, lng]);
-          marker.getPopup().setContent(`Cane Location<br>Lat: ${lat}<br>Lng: ${lng}`);
-        }
-      } else {
-          document.getElementById('state').innerText = "Waiting for Data...";
-          document.getElementById('dashboard-title').innerText = `Device Offline: ${caneId.toUpperCase()}`;
+    function startTracking(caneId) {
+      // Clean up previous listener
+      if (currentListener && currentRef) {
+        off(currentRef, 'value', currentListener);
       }
+      
+      // Reset UI state
+      document.getElementById('state').innerText = "Connecting...";
+      document.getElementById('fwd').innerText = "--";
+      document.getElementById('pit').innerText = "--";
+      document.getElementById('liveLog').innerHTML = ""; // Clear logs
+      sensorChart.data.labels = [];
+      sensorChart.data.datasets[0].data = [];
+      sensorChart.data.datasets[1].data = [];
+      sensorChart.update();
+
+      // Update URL silently
+      window.history.pushState({}, '', '?id=' + caneId);
+
+      // Start new listener
+      currentRef = ref(db, `smartCane/${caneId}`);
+      currentListener = onValue(currentRef, (snapshot) => {
+        const data = snapshot.val();
+        if(data) {
+          document.getElementById('state').innerText = data.systemState || "ONLINE";
+          document.getElementById('fwd').innerText = data.fwdDistance ? data.fwdDistance + " cm" : "--";
+          document.getElementById('pit').innerText = data.pitDistance ? data.pitDistance + " cm" : "--";
+          document.getElementById('silenced').innerText = data.alarmSilenced ? "Muted" : "Active";
+          document.getElementById('sound').innerText = data.soundEnabled ? "Buzzer ON" : "Haptics Only";
+          
+          const sosCard = document.getElementById('sosCard');
+          if (data.sosTriggered) {
+            document.getElementById('sos').innerText = "EMERGENCY!";
+            sosCard.className = "card sos-active"; 
+          } else {
+            document.getElementById('sos').innerText = "Safe";
+            sosCard.className = "card";
+          }
+          
+          const fwdCard = document.getElementById('fwdCard');
+          if (data.fwdDistance <= 35 && data.fwdDistance > 0) fwdCard.className = "card danger-bg";
+          else if (data.fwdDistance <= 100 && data.fwdDistance > 0) fwdCard.className = "card warning-bg";
+          else fwdCard.className = "card success-bg";
+
+          const now = new Date();
+          const timeStamp = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+
+          if(data.fwdDistance !== undefined && data.pitDistance !== undefined) {
+            sensorChart.data.labels.push(timeStamp);
+            sensorChart.data.datasets[0].data.push(data.fwdDistance);
+            sensorChart.data.datasets[1].data.push(data.pitDistance);
+            if (sensorChart.data.labels.length > maxDataPoints) {
+              sensorChart.data.labels.shift();
+              sensorChart.data.datasets[0].data.shift();
+              sensorChart.data.datasets[1].data.shift();
+            }
+            sensorChart.update();
+          }
+
+          const logBox = document.getElementById('liveLog');
+          const audioStateStr = data.soundEnabled ? "ON" : "MUTED";
+          const newLogEntry = document.createElement('div');
+          newLogEntry.className = "log-line";
+          
+          let logText = `<span class="log-timestamp">[${timeStamp}]</span> State: ${data.systemState || 'OK'} | FWD: ${data.fwdDistance}cm | PIT: ${data.pitDistance}cm | Audio: ${audioStateStr} `;
+          if (data.sosTriggered) logText += `<span class="log-alert"> | WARNING: SOS TRIGGERED!</span>`;
+
+          newLogEntry.innerHTML = logText;
+          logBox.prepend(newLogEntry); 
+
+          if (data.latitude && data.longitude) {
+            const lat = parseFloat(data.latitude);
+            const lng = parseFloat(data.longitude);
+            if (marker && map) {
+              marker.setLatLng([lat, lng]);
+              map.panTo([lat, lng]);
+              marker.getPopup().setContent(`Location<br>Lat: ${lat}<br>Lng: ${lng}`);
+            }
+          }
+        } else {
+            document.getElementById('state').innerText = "Waiting for Data...";
+            document.getElementById('fwd').innerText = "--";
+            document.getElementById('pit').innerText = "--";
+        }
+      });
+    }
+
+    // Handle Dropdown Changes
+    deviceSelect.addEventListener('change', (event) => {
+      startTracking(event.target.value);
     });
+
+    // Start tracking on initial load
+    startTracking(currentCaneId);
+
   </script>
-
 </body>
 </html>
